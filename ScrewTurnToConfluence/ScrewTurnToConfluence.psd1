@@ -21,7 +21,7 @@ ModuleVersion = '0.0.1'
 GUID = '20d99389-d124-4c34-96fc-cc01822026d6'
 
 # Author of this module
-Author = 'SIS&T Innovathon 2019'
+Author = 'SIS&T Innovathon 2019 (Justin/Ventzi/Josh)'
 
 # Company or vendor of this module
 CompanyName = 'Unknown'

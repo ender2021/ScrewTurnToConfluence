@@ -7,6 +7,9 @@ if(@($publicFiles).Count -gt 0) { $publicFiles.FullName | ForEach-Object { . $_ 
 
 Export-ModuleMember -Function $publicFiles.BaseName
 
+# Import modules required by this module
+import-module -Name SqlServer #Module used for connecting to SQL Server
+
 if($null -eq $global:ScrewTurnToConfluence) {
 	$global:PowerConfluence = @{}
 }
