@@ -1,46 +1,44 @@
 function Connect-ToDatabase {
     [CmdletBinding()]
     param (
-        # A sample parameter
+        # Database connection string
         [Parameter(Mandatory,Position=0,ValueFromPipeline)]
         [string]
         $DatabaseConnectionString
 
         ,
 
-        # Parameter help description
+        # Database Name
         [Parameter(Mandatory, Position=1)]
         [string]
         $DatabaseName
 
-        ,
-        # Parameter help description
-        [Parameter(Mandatory, Position=2)]
-        [PSCredential]
-        $Credentials
     )
     
     begin {
-        $DatabaseConnection = ""
-
-        #creds will be in the $Credentials parameter
-
-        #$tables = invoke-sqlcmd -server $DatabaseConnectionString -Database $DatabaseName "select ss.name as schema_name, so.name as table_name, ss.name+'.'+so.name as full_name from sysobjects so inner join sys.schemas ss on ss.schema_id=so.uid where type='u' order by ss.name, so.name" 
-
-
-
-       # $tables = Invoke-Sqlcmd -server $DatabaseConnectionString -Database $DatabaseName -Username "" -Password ""
-
+        $DataSet
+  
     }
     
 
-
     process {
-        $DatabaseConnection += $DatabaseConnectionString
+
+        $SQLServer = $DatabaseConnectionString
+        $SQLDBName = $DatabaseName
+        $SqlQuery = "SELECT * FROM PageContent WHERE Revision = -1;"
+        $SqlConnection = New-Object System.Data.SqlClient.SqlConnection
+        $SqlConnection.ConnectionString = "Server = $SQLServer; Database = $SQLDBName; Integrated Security = True;"
+        $SqlCmd = New-Object System.Data.SqlClient.SqlCommand
+        $SqlCmd.CommandText = $SqlQuery
+        $SqlCmd.Connection = $SqlConnection
+        $SqlAdapter = New-Object System.Data.SqlClient.SqlDataAdapter
+        $SqlAdapter.SelectCommand = $SqlCmd
+        $DataSet = New-Object System.Data.DataSet
+        $SqlAdapter.Fill($DataSet)
     }
     
     end {
-        $DatabaseConnection + $DatabaseName
+        $DataSet
         
     }
 }
