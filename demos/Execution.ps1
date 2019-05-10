@@ -24,7 +24,7 @@ Open-ConfluenceSession $ConfluenceCredentials.UserName $ConfluenceCredentials.Ap
 #Get-Content $PSScriptRoot\body.txt | Invoke-ConfluenceConvertContentBody -FromFormat "wiki" -ToFormat "storage"
 
 #fill it with content
-$pageObjects = Get-ScrewTurnPageContent $dbConnection $dbName | New-PageObject # | Invoke-ConfluenceCreateContent -SpaceKey $spaceKey
+$pageObjects = Get-ScrewTurnPageContent $dbConnection $dbName | New-PageObject -Verbose # | Invoke-ConfluenceCreateContent -SpaceKey $spaceKey
 
 #close the session
 Close-ConfluenceSession

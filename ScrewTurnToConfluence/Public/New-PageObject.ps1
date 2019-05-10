@@ -10,6 +10,7 @@ function New-PageObject {
         $results = @()
     }
     process {
+        Write-Verbose ("Create object for: " + $PageContentRow.Name)
         $results += [pscustomobject]@{
             Title = $PageContentRow.Title
             Body = (New-ConfluenceContentBody (Format-Content $PageContentRow.Content))
