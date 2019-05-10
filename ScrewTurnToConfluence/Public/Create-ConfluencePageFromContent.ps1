@@ -22,10 +22,7 @@ function Create-ConfluencePageFromContent {
     )
     
     begin {
-        # REMOVE LATER ASK JUSTIN HOW TO DO THIS 'RIGHT' - JAA
-        $UserName="joshanders_84@ucsb.edu"
-        $ApiToken="l1xgzVKHHnlksjPptB7R2842"
-        $HostName="https://ucsb-sist.atlassian.net"
+
 
         # Open a Confluence Session
         Open-ConfluenceSession -UserName $UserName -Password $ApiToken -HostName $HostName
@@ -34,7 +31,7 @@ function Create-ConfluencePageFromContent {
         # the first bit is to deal with a formatting issue. (?)
         $Content = $content -replace [char]0x00a0,'-' | Invoke-ConfluenceConvertContentBody -FromFormat "wiki" -ToFormat "storage"
 
-
+($_["Content"] -replace [char]0x00a0,'-' | Invoke-ConfluenceConvertContentBody -FromFormat "wiki" -ToFormat "storage")
         Invoke-ConfluenceCreateContent $SpaceName -Body (New-ConfluenceContentBody "")
 
     }    

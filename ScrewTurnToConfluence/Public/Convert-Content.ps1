@@ -9,29 +9,20 @@ function Convert-Content {
     )
     
     begin {
-        $ContentToConvert.Replace("{UP", "")
-
-
-        $DatabaseConnection = ""
-
-        #creds will be in the $Credentials parameter
-
-        #$tables = invoke-sqlcmd -server $DatabaseConnectionString -Database $DatabaseName "select ss.name as schema_name, so.name as table_name, ss.name+'.'+so.name as full_name from sysobjects so inner join sys.schemas ss on ss.schema_id=so.uid where type='u' order by ss.name, so.name" 
-
-
-
-       # $tables = Invoke-Sqlcmd -server $DatabaseConnectionString -Database $DatabaseName -Username "" -Password ""
-
+        $results = @()
     }
-    
 
 
     process {
-        $DatabaseConnection += $DatabaseConnectionString
+        
+        $ContentToConvert = ($ContentToConvert -replace [char]0x00a0,'-' | Invoke-ConfluenceConvertContentBody -FromFormat "wiki" -ToFormat "storage").Value
+        $ContentToConvert = $ContentToConvert -replace "\[image\|\|\{UP\(.*?\)\}(.*?\.[a-zA-Z]*)\]",'[[File=$1]]'
+ 
+        $results += $ContentToConvert
     }
     
     end {
-        $DatabaseConnection + $DatabaseName
+        $results
         
     }
 }
