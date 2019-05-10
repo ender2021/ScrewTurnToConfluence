@@ -1,7 +1,7 @@
-Import-Module D:\Projects\ScrewturnToConfluence\ScrewTurnToConfluence\ScrewTurnToConfluence\ScrewTurnToConfluence.psm1 -Force
+Import-Module $PSScriptRoot\..\ScrewTurnToConfluence\ScrewTurnToConfluence.psm1 -Force
 Import-Module SqlServer -Force
 (Get-InstalledModule PowerConfluence).InstalledLocation + "\PowerConfluence.psm1" | Import-Module -Force
-. $PSScriptRoot\demos\Credentials\Credentials.ps1
+. $PSScriptRoot\Credentials\Credentials.ps1
 
 #configure script
 $spaceKey = "IWCTS"
@@ -13,15 +13,18 @@ $dbName = "KnowledgeBase"
 Open-ConfluenceSession $ConfluenceCredentials.UserName $ConfluenceCredentials.ApiToken $ConfluenceCredentials.HostName
 
 #delete the space if it already exists, and then wait to make sure it finishes
-Invoke-ConfluenceDeleteSpace -SpaceKey $spaceKey
+#Invoke-ConfluenceDeleteSpace -SpaceKey $spaceKey
 
-Start-sleep -Seconds 10
+#Start-sleep -Seconds 10
 
 #create a fresh space
-Invoke-ConfluenceCreateSpace -SpaceKey $spaceKey -Name $spaceName
+#Invoke-ConfluenceCreateSpace -SpaceKey $spaceKey -Name $spaceName
+
+#Read from a text file and attempt to convert (use for testing a single piece of content)
+#Get-Content $PSScriptRoot\body.txt | Invoke-ConfluenceConvertContentBody -FromFormat "wiki" -ToFormat "storage"
 
 #fill it with content
-Get-ScrewTurnPageContent $dbConnection $dbName | New-PageObject | Invoke-ConfluenceCreateContent -SpaceKey $spaceKey
+$pageObjects = Get-ScrewTurnPageContent $dbConnection $dbName | New-PageObject # | Invoke-ConfluenceCreateContent -SpaceKey $spaceKey
 
 #close the session
 Close-ConfluenceSession
