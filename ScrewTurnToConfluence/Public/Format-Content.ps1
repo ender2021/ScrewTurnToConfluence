@@ -1,4 +1,4 @@
-function Convert-Content {
+function Format-Content {
     [CmdletBinding()]
     param (
         # A sample parameter

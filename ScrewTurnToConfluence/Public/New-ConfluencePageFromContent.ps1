@@ -1,19 +1,15 @@
-function Create-ConfluencePageFromContent {
+function New-ConfluencePageFromContent {
     [CmdletBinding()]
     param (
         # The content to convert
         [Parameter(Mandatory,Position=0,ValueFromPipeline)]
         [String]
-        $Content
-
-        ,
+        $Content,
 
         # Parameter help description
         [Parameter(Mandatory, Position=1)]
         [String]
-        $SpaceName
-
-        ,
+        $SpaceName,
 
         # The name of the page to create
         [Parameter(Mandatory, Position=2)]
@@ -24,6 +20,11 @@ function Create-ConfluencePageFromContent {
     begin {
 
 
+        
+
+    }    
+
+    process {
         # Open a Confluence Session
         Open-ConfluenceSession -UserName $UserName -Password $ApiToken -HostName $HostName
 
@@ -31,13 +32,8 @@ function Create-ConfluencePageFromContent {
         # the first bit is to deal with a formatting issue. (?)
         $Content = $content -replace [char]0x00a0,'-' | Invoke-ConfluenceConvertContentBody -FromFormat "wiki" -ToFormat "storage"
 
-($_["Content"] -replace [char]0x00a0,'-' | Invoke-ConfluenceConvertContentBody -FromFormat "wiki" -ToFormat "storage")
+        ($_["Content"] -replace [char]0x00a0,'-' | Invoke-ConfluenceConvertContentBody -FromFormat "wiki" -ToFormat "storage")
         Invoke-ConfluenceCreateContent $SpaceName -Body (New-ConfluenceContentBody "")
-
-    }    
-
-    process {
-        
     }
     
     end {

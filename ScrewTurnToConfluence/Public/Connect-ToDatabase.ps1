@@ -4,25 +4,19 @@ function Connect-ToDatabase {
         # Database connection string
         [Parameter(Mandatory,Position=0,ValueFromPipeline)]
         [string]
-        $DatabaseConnectionString
-
-        ,
+        $DatabaseConnectionString,
 
         # Database Name
         [Parameter(Mandatory, Position=1)]
         [string]
         $DatabaseName
-
     )
     
     begin {
         $DataSet
-  
     }
     
-
     process {
-
         $SQLServer = $DatabaseConnectionString
         $SQLDBName = $DatabaseName
         $SqlQuery = "SELECT * FROM PageContent WHERE Revision = -1;"
@@ -39,6 +33,5 @@ function Connect-ToDatabase {
     
     end {
         $DataSet
-        
     }
 }
