@@ -21,7 +21,11 @@ function Format-Content {
             },
             @{
                 find = "\[image\:{UP\(.*?\)\}(.*?\.[a-zA-Z]*)(\]|\|)((.*?)\])?"
-                replace = '[[File=$1]]'
+                replace = '[[File:$1]]'
+            },
+            @{
+                find = "\[{UP\(.*?\)\}(.*?)\]"
+                replace = '[[:File:$1]]'
             },
             @{
                 find = '“'
