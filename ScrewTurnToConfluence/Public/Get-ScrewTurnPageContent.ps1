@@ -15,7 +15,12 @@ function Get-ScrewTurnPageContent {
         # schema
         [Parameter(Position=2,ValueFromPipelineByPropertyName)]
         [string]
-        $DatabaseSchema="dbo"
+        $DatabaseSchema="dbo",
+
+        # An array of page names to exclude from the results
+        [Parameter(Position=3,ValueFromPipelineByPropertyName)]
+        [string[]]
+        $Exclude
     )
     
     begin {
@@ -24,7 +29,7 @@ function Get-ScrewTurnPageContent {
     
     process {
         $pageTable = Read-SqlTableData -ServerInstance $ServerName -DatabaseName $DatabaseName -SchemaName "dbo" -TableName "PageContent" 
-        $results += $pageTable | Where-Object { $_.Revision -eq -1 }
+        $results += $pageTable | Where-Object { ($_.Revision -eq -1) -and ($Exclude -notcontains $_.Name) }
     }
     
     end {
