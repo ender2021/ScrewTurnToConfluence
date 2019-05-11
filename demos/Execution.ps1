@@ -10,15 +10,34 @@ $spaceName = $Config.spaceName #+ " 2"
 #open a session
 Open-ConfluenceSession $ConfluenceCredentials.UserName $ConfluenceCredentials.ApiToken $ConfluenceCredentials.HostName
 
-#delete the space if it already exists, and then wait to make sure it finishes
+#delete the space if it already exists
 try {
     Write-Host "Deleting space"
-    $response = Invoke-ConfluenceDeleteSpace -SpaceKey $spaceKey
-    Write-Host "Sleeping for 10 seconds to allow the delete operation to finish"
-    Start-sleep -Seconds 10
+    $taskHandle = Invoke-ConfluenceDeleteSpace -SpaceKey $spaceKey
+    $deleteSuccess = $true
 }
 catch {
     Write-Host "Space with key $spaceKey does not exist"
+    $deleteSuccess = $false
+}
+
+#if the delete request succeeded, wait for it to finish
+if ($deleteSuccess) {
+    try {
+        $timer = [system.diagnostics.stopwatch]::StartNew()
+        do {
+            Start-sleep -Seconds 5
+            $percent = (Invoke-ConfluenceGetLongRunningTask $taskHandle.id).percentageComplete
+            $totalSecs =  [math]::Round($timer.Elapsed.TotalSeconds,0)
+            Write-Host "Delete task is $percent% complete, with $totalSecs seconds elapsed"
+        } while ($percent -lt 100)
+        $timer.Stop()
+    } catch {
+        if($timer.IsRunning()) {$timer.Stop()}
+        Write-Error "Error encountered while waiting for space delete to finish.  Terminating script."
+        throw
+        exit
+    }
 }
 
 #create a fresh space
