@@ -2,12 +2,8 @@ Import-Module $PSScriptRoot\..\ScrewTurnToConfluence\ScrewTurnToConfluence.psm1 
 Import-Module SqlServer -Force
 (Get-InstalledModule PowerConfluence).InstalledLocation + "\PowerConfluence.psm1" | Import-Module -Force
 . $PSScriptRoot\Credentials\Credentials.ps1
+. $PSScriptRoot\configs\Config.ps1
 
-#configure script
-$spaceKey = "IWCTS"
-$spaceName = "Innovathon Wiki Conversion Test Space"
-$dbConnection = "sql1.dev.sa.ucsb.edu,2433"
-$dbName = "KnowledgeBase"
 
 #open a session
 Open-ConfluenceSession $ConfluenceCredentials.UserName $ConfluenceCredentials.ApiToken $ConfluenceCredentials.HostName
@@ -24,7 +20,7 @@ Open-ConfluenceSession $ConfluenceCredentials.UserName $ConfluenceCredentials.Ap
 #Get-Content $PSScriptRoot\body.txt | Invoke-ConfluenceConvertContentBody -FromFormat "wiki" -ToFormat "storage"
 
 #fill it with content
-$pageObjects = Get-ScrewTurnPageContent $dbConnection $dbName | New-PageObject -Verbose # | Invoke-ConfluenceCreateContent -SpaceKey $spaceKey
+$pageObjects = Get-ScrewTurnPageContent $Config.dbconnection $Config.dbName | New-PageObject -Verbose
 
 #close the session
 Close-ConfluenceSession

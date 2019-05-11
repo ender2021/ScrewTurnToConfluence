@@ -1,0 +1,401 @@
+{TOC}
+<div style="clear:both"></div>
+
+The goal of this article is to function as a step-by-step guide to the implementation of a custom MVC widget with a back-end designer, for use with Sitefinity 6.0.  In this tutorial I will walk you through the steps of creating a Sitefinity widget that will allow you to hide content behind an LDAP login.  We will start from scratch and create the widget and its designer in three main steps:
+
+# Create the widget and designer files in your Sitefinity project using Sitefinity Thunder
+# Create the widget designer, used to create content on your pages
+# Create the widget itself, for displaying the content created in the designer
+
+As a pre-requisite for this article, I am making the following assumptions:
+
+# You have read the article [Understanding-Sitefinity-MVC-Custom-Widgets-and-Designers|Understanding Sitefinity MVC Custom Widgets and Designers]
+# You have Visual Studio 2012 with the latest patches installed on your machine
+# You have your instance of Sitefinity set up and ready to run
+# You have the Sitefinity Thunder extension installed in Visual Studio, and the module installed in your Sitefinity instance
+# You have basic knowledge of the MVC design pattern and its .NET implementation, and that you have at least passing familiarity with the Razor View Engine
+
+Let's begin!
+
+===Create and Register the Widget===
+
+The first step to creating any new Sitefinity MVC widget is to use Sitefinity Thunder to create the new widget files.  So, let's go ahead and create our widget files using the Add > New Item context menu from the solution explorer.  If you don't remember how to do this, please consult the corresponding step in [Understanding-Sitefinity-MVC-Custom-Widgets-and-Designers|Understanding Sitefinity MVC Custom Widgets and Designers].  For this widget, I am using the name "LdapHiddenContent".
+
+===Create the Widget Designer===
+
+Before we start coding anything, let's talk briefly about what exactly we are doing: we want to be able to hide some content behind an LDAP login.  Thus, there are two pieces of information that we will need for an instance of this widget:
+
+# Some content to hide
+# Some LDAP configuration data
+
+We want the content to be anything the user wants it to be, so the desired implementation is a Sitefinity Editor (a normal RadEditor, but hooked into your Sitefinity instance for things like links and media assets).  The LDAP configuration should be modular so that the user can provide as little or as much valid LDAP configuration as they like; as such, the desired implementation is a textbox to hold a JSON configuration string.  We'll start with the template file:
+
+====The Designer Template====
+
+@@xml
+<%@ Control %>
+<%@ Register Assembly="Telerik.Sitefinity" TagPrefix="sf" Namespace="Telerik.Sitefinity.Web.UI" %>
+<%@ Register Assembly="Telerik.Sitefinity" TagPrefix="sitefinity" Namespace="Telerik.Sitefinity.Web.UI" %>
+<%@ Register TagPrefix="sf" Namespace="Telerik.Sitefinity.Web.UI.Fields" Assembly="Telerik.Sitefinity, Version=6.0.4100.0, Culture=neutral, PublicKeyToken=b28c218413bdf563" %>
+
+<sitefinity:ResourceLinks ID="resourcesLinks" runat="server">
+    <sitefinity:ResourceFile Name="Styles/Ajax.css" />
+</sitefinity:ResourceLinks>
+<div id="designerLayoutRoot" class="sfContentViews sfSingleContentView" style="max-height: 400px; width: 720px; overflow: auto; ">
+<ol>
+    <li class="sfFormCtrl">
+    <asp:Label ID="lblHiddenContent" runat="server" AssociatedControlID="HiddenContent" CssClass="sfTxtLbl">Hidden Content</asp:Label>
+    <sf:HtmlField ID="HiddenContent" runat="server" CssClass="sfEditorWrp sfClearFix" DisplayMode="Write" Height="300" Width="670"></sf:HtmlField>
+    <div class="sfExample">The content that will be hidden behind the login</div>
+    </li>
+</ol>
+
+<div class="sfExpandableSection">
+    <h3><a href="javascript:void(0);" class="sfMoreDetails">Advanced Configuration</a></h3>
+    <ul class="sfTargetList">
+        <li class="sfFormCtrl">
+            <asp:Label ID="Label1" runat="server" AssociatedControlID="LdapConfigJson" CssClass="sfTxtLbl">LDAP Configuration JSON</asp:Label>
+            <asp:TextBox ID="LdapConfigJson" runat="server" CssClass="sfTxt" Width="645" />
+            <div class="sfExample">The LDAP configuration for this login (JSON format)</div>
+        </li>
+    </ul>
+</div>
+</div>
+@@
+
+You'll see above that we've made quite a few modifications to the default template file.  The first step is to remove the default Message field.
+
+Next, we want to add a Sitefinity Editor for creating the hidden content; do this by adding the {{sf:HtmlField}} tag.  Notice that in order to use this tag, we will also need to add a registration tag for the appropriate namespace: {{<%@ Register TagPrefix="sf" Namespace="Telerik.Sitefinity.Web.UI.Fields" Assembly="Telerik.Sitefinity, Version=6.0.4100.0, Culture=neutral, PublicKeyToken=b28c218413bdf563" %>}}.
+
+Then we add a section for the LDAP configuration JSON.  Now, the average user will probably not care very much about looking at this data when they are updating the hidden content.  For this reason, we've decided that the config textbox should be hidden in an "Advanced Configuration" section of our designer.  Fortunately Sitefinity has an existing convention for doing this.  The document structure will establish the style of the section; later we will add some javascript in the client script, to enable the hide/show action.
+
+Finally, note that we've added a {{width: 720px;}} style to the {{designerLayoutRoot}}.  This will ensure that our designer window is wide enough to comfortably accommodate our editor.
+
+====The Designer Code====
+
+Now that we've created the template for the designer, let's wire up the code section.  We don't have any controls needing initialization, so we can focus exclusively on the Control References and IScriptControl Implementation sections.
+
+=====Control References=====
+
+@@csharp
+/// <summary>
+/// Gets the control that is bound to the LdapConfigJson property
+/// </summary>
+protected virtual Control LdapConfigJson
+{
+    get
+    {
+        return this.Container.GetControl<Control>("LdapConfigJson", true);
+    }
+}
+
+/// <summary>
+/// Gets the control that is bound to the HiddenContent property
+/// </summary>
+protected virtual Control HiddenContent
+{
+    get
+    {
+        return this.Container.GetControl<Control>("HiddenContent", true);
+    }
+}
+@@
+
+As with the template, the first step is to remove the default Message property.  Then we add a property for each of our two new controls, {{HiddenContent}} and {{LdapConfigJson}}.  Note that the properties return a reference of type {{System.Web.UI.Control}}, not the specific type of the actual control.
+
+=====IScriptControl Implementation=====
+
+@@csharp
+/// <summary>
+/// Gets a collection of script descriptors that represent ECMAScript (JavaScript) client components.
+/// </summary>
+public override System.Collections.Generic.IEnumerable<System.Web.UI.ScriptDescriptor> GetScriptDescriptors()
+{
+    var scriptDescriptors = new List<ScriptDescriptor>(base.GetScriptDescriptors());
+    var descriptor = (ScriptControlDescriptor)scriptDescriptors.Last();
+
+    descriptor.AddElementProperty("ldapConfigJson", this.LdapConfigJson.ClientID);
+    descriptor.AddElementProperty("hiddenContent", this.HiddenContent.ClientID);
+
+    return scriptDescriptors;
+}
+
+/// <summary>
+/// Gets a collection of ScriptReference objects that define script resources that the control requires.
+/// </summary>
+public override System.Collections.Generic.IEnumerable<System.Web.UI.ScriptReference> GetScriptReferences()
+{
+    var scripts = new List<ScriptReference>(base.GetScriptReferences());
+    scripts.Add(new ScriptReference(LdapHiddenContentDesigner.scriptReference));
+    return scripts;
+}
+@@
+
+First we remove the line that added the Message property in the {{GetScriptDescriptors()}} method.  Then we add a new {{descriptor.AddElementProperty}} for each of the two new controls we added.  Remember the string name that you give for the controls - these will need to match the getter/setter properties we will create in the client script.  By convention, you should use the camel-cased name of the control.
+
+
+====The Designer Client Script====
+
+The last piece we will need to get the designer completed is the client script.  We need to add properties/fields for our new controls, the load/save code for the designer, and a fancy bell/whistle for our Advanced Configuration section.
+
+=====Initialize Fields=====
+
+@@js
+/* Initialize fields */
+this._ldapConfigJson = null;
+this._hiddenContent = null;
+@@
+
+Here you can see we've removed the {{_message}} property and added properties for our new controls.
+
+=====Properties=====
+
+@@js
+/* get/set properties */
+get_ldapConfigJson: function () { return this._ldapConfigJson; },
+set_ldapConfigJson: function (value) { this._ldapConfigJson = value; },
+get_hiddenContent: function () { return this._hiddenContent; },
+set_hiddenContent: function (value) { this._hiddenContent = value; }
+@@
+
+Next we'll jump to the Properties section, as you're going to need these in your {{refreshUI}} and {{applyChanges}} methods.  As you can see, we've simply removed the default message getter/setter properties and added some for our two new controls.  Remember once again that these should match up with the names you registered in your control code-behind.
+
+=====Event Handlers=====
+
+@@js
+toggleAdvancedSettings: function () {
+    jQuery('.sfExpandableSection').toggleClass('sfExpandedSection');
+}
+@@
+
+Now we'll add a method that will be used to hide/show our Advanced Configuration section - do this in the Event Handlers section of the file.  If we had more hide/show sections this code would need to be more selective, but we'll be lazy since we just have the one section.
+
+=====refreshUI=====
+
+@@js
+/* Called when the designer window gets opened and here is place to "bind" your designer to the control properties */
+refreshUI: function () {
+    var controlData = this._propertyEditor.get_control().Settings; /* JavaScript clone of your control - all the control properties will be properties of the controlData too */
+
+    /* populate values */
+    jQuery(this.get_ldapConfigJson()).val(controlData.LdapConfigJson);
+    $find(this.get_hiddenContent().id).set_value(controlData.HiddenContent);
+
+    /*set hide/show event handler*/
+    jQuery('.sfMoreDetails').click(this.toggleAdvancedSettings);
+}
+@@
+
+Here we are loading the current settings into the designer form controls.  The property names on the {{controlData}} object will be the same as the public property names on your widget Controller (see the Designing the Widget sections for more information).  Note that because the Sitefinity Editor is a Telerik RadEditor we are using the special Telerik {{$find()}} client method to retrieve a reference to the control and then using the specialized {{.set_value()}} property to set the content of the editor.
+
+In addition, you can see that we are wiring up a click event handler to take care of the hide/show toggle on the Advanced Configuration section.
+
+=====applyChanges=====
+
+@@js
+/* Called when the "Save" button is clicked. Here you can transfer the settings from the designer to the control */
+applyChanges: function () {
+    var controlData = this._propertyEditor.get_control().Settings;
+
+    /* ApplyChanges */
+    controlData.LdapConfigJson = jQuery(this.get_ldapConfigJson()).val();
+    controlData.HiddenContent = $find(this.get_hiddenContent().id).get_value();
+}
+@@
+
+Finally, we add the code that will save our changes in the {{applyChanges()}} method.  As you can see, we are simply retrieving the values from the form control and storing them back in our {{controlData}} object.
+
+That's it!  The designer is complete - now we need to make the widget itself.  Note that at this stage, while you can build and run your Sitefinity site, the widget designer will not be functional.  Don't worry though - after we put the widget components together, we'll come back and look at the designer.
+
+
+===Create the Widget - Doing the Work===
+
+So you have a widget designer.  That's great, but without a way to display your data, the designer doesn't do you much good, now does it?  Let's fix that.
+
+====The Model====
+
+@@csharp
+namespace SitefinityWebApp.Mvc.Models
+namespace SitefinityWebApp.Mvc.Models
+{
+    public class LdapHiddenContentModel
+    {
+        #region Properties
+
+        [Required(ErrorMessage="UcsbNetId is required")]
+        public string UcsbNetId { get; set; }
+        
+        [Required(ErrorMessage="Password is required")]
+        public string Password { get; set; }
+        
+        public string ValidationMessage { get; set; }
+        
+        public string HiddenContent { get; set; }
+
+        #endregion
+
+        #region Constructors
+
+        public LdapHiddenContentModel()
+        {
+            
+        }
+
+        public LdapHiddenContentModel(string hiddenContent)
+        {
+            HiddenContent = hiddenContent;
+        }
+
+        #endregion
+    }
+}
+@@
+
+There are a lot of ways to go about designing your Model - this should by no means be considered the absolute best.  I've chosen to construct a simple Model that can be used to handle the login form submission, as well as displaying the hidden content for my widget.
+
+The only really interesting thing to note in the Model code are the validation attributes we've added.  We've placed {{System.ComponentModel.DataAnnotations.Required}} attributes on our {{UcsbNetId}} and {{Password}} fields, to specify that these fields are required when posting a View form with these properties.
+
+====The Views====
+
+=====Login.cshtml=====
+
+@@html
+@model SitefinityWebApp.Mvc.Models.LdapHiddenContentModel
+
+@using (Html.BeginForm("index", "LdapHiddenContent"))
+{
+    <div id="login-box">
+        @Html.ValidationSummary()
+        <span class="validation-message">@Model.ValidationMessage</span>
+        <!--sorry, but i'm lazy-->
+        <table id="login-table">
+            <tbody>
+                <tr>
+                    <td class="table-label">
+                        @Html.LabelFor(m => m.UcsbNetId)
+                    </td>
+                    <td>
+                        @Html.TextBoxFor(m => m.UcsbNetId, new {onkeypress = "javascript:if (event.keyCode == 13) {jQuery('#versatile-login').click();}"})
+                    </td>
+                </tr>
+                <tr>
+                    <td class="table-label">
+                        @Html.LabelFor(m => m.Password)
+                    </td>
+                    <td>
+                        @Html.PasswordFor(m => m.Password, new { onkeypress = "javascript:if (event.keyCode == 13) {jQuery('#versatile-login').click();}" })
+                    </td>
+                </tr>
+                <tr>
+                    <td id="button-cell" colspan="2">
+                        <input type="image" name="VersatileLogin" id="versatile-login" class="btn" alt="Login" src="https://static.sa.ucsb.edu/images/btn_login_200905111202.gif" />
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+}
+@@
+
+The first step is to simply delete the default View created by Thunder.  Get rid of it, we won't need it; we are making our own! Due to the nature of our widget, we are going to need two different Views: one will be displayed to the user before they have authenticated, another will be shown once they have successfully authenticated.  Let's start by creating the Login view, Login.cshtml.
+
+This is a fairly simple MVC Razor view.  We define the View Model as our {{LdapHiddenContentModel}} and then we create a login form using the Razor Html Helpers.  We tell the form helper that it will be posting back to the {{Index}} method of our {{LdapHiddenContentController}} and then create the form fields and labels.  Note that we don't need to do anything about validation except to output the form validation summary, because we put those validation attributes on our Model.  We've added an additional validation message, in case it is necessary to pass additional messages from the Controller.  We've also added (in a lazy way) a keypress event to each of the textboxes, to submit the form when enter is pressed.
+
+=====HiddenContent.cshtml=====
+
+@@html
+@model SitefinityWebApp.Mvc.Models.LdapHiddenContentModel
+
+@Html.Raw(Model.HiddenContent)
+@@
+
+This View is about as simple as it gets - define the View Model and then output some raw HTML content.
+
+====The Controller====
+
+@@csharp
+namespace SitefinityWebApp.Mvc.Controllers
+{
+    [ControllerToolboxItem(Name = "LdapHiddenContent", Title = "LdapHiddenContent", SectionName = "MvcWidgets"), Telerik.Sitefinity.Web.UI.ControlDesign.ControlDesigner(typeof(SitefinityWebApp.WidgetDesigners.LdapHiddenContent.LdapHiddenContentDesigner))]
+    public class LdapHiddenContentController : Controller
+    {
+        /// <summary>
+        /// Gets or sets the html content that this login hides.
+        /// </summary>
+        [Category("String Properties")]
+        public string HiddenContent { get; set; }
+
+        /// <summary>
+        /// Gets or sets the LDAP configuration for this login (JSON format).
+        /// </summary>
+        [Category("String Properties")]
+        public string LdapConfigJson { get; set; }
+
+        /// <summary>
+        /// This is the default Action.
+        /// </summary>
+        [HttpGet]
+        public ActionResult Index()
+        {
+            var model = new LdapHiddenContentModel();
+            return View("Login", model);
+        }
+
+        [HttpPost]
+        public ActionResult Index(LdapHiddenContentModel model)
+        {
+            var provider = InitializeProvider(LdapConfigJson);
+            if (ModelState.IsValid && provider.ValidateUser(model.UcsbNetId, model.Password))
+            {
+                model.HiddenContent = HiddenContent;
+                return View("HiddenContent", model);
+            }
+            else
+            {
+                if (ModelState.IsValid)
+                {
+                    model.ValidationMessage = "Invalid UCSB Net ID and/or password";
+                }
+                return View("Login", model);
+            }
+        }
+    }
+}
+@@
+
+The last piece we need to complete is the widget's controller.  We've cleared out the default Controller code and added the three pieces we'll need: the properties, the GET Index action, and the POST Index action.
+
+The properties of your Controller link it to your widget designer - each public property will be a property available on the client object in your designer's client script.  You can see we've added one property for each of our two designer controls.
+
+The GET Index action (specified with the {{HttpGet}} attribute) is very simple - it constructs a new blank Model and serves up the Login View.
+
+The POST Index action (specified with the {{HttpPost}} attribute) is where the meat of this Controller happens.  As you know from your extensive .NET MVC training, this action will occur when an HTTP POST request is submitted to this Controller, and is passed a Model constructed from the request.
+
+You can see from the code that the first step this action takes is to execute a method called {{InitializeProvider}} using our {{LdapConfigJson}}.  Don't worry about the innards of this method - just know that it takes a JSON string, deserializes it, and uses it to configure and return an {{LdapMembershipProvider}} object with a {{ValidateUser}} method that we can use to check the credentials the user supplied.
+
+In this action, we attempt to validate the credentials supplied by the user and then make a decision - if the credentials are complete and valid, we serve the HiddenContent View to the user; if not, we return them to the Login View with a message.
+
+That's all there is to it!  You now have a fully functional Sitefinity MVC Widget, complete with custom made designer.  Let's put it all together and check out the result!
+
+
+===Conclusion and Further Reading===
+
+Now that you've finished writing your code, build your Sitefinity project and open it up in the browser.  Warning Note: if you loaded your widget designer at any point in the middle of the process, it might be wise to clear your browser cache; Sitefinity seems to be very aggressive about caching the designer client script.
+
+Return to the edit view of the sample page we created all the way back at the beginning of the tutorial.  If everything is working correctly, you should see that your widget now looks something like this:
+
+[image||{UP(Case-Study-Building-the-LdapHiddenContent-Sitefinity-MVC-Widget)}WidgetDesignView.jpg]
+
+Not beautiful, but it's a serviceable login - you can style it to your own specifications.  Now click the Edit link on the widget and let's take a look at the designer:
+
+[image||{UP(Case-Study-Building-the-LdapHiddenContent-Sitefinity-MVC-Widget)}WidgetDesignerFinished.jpg]
+
+Beautiful!  We have a nice designer window with an expandable advanced configuration section.  Let's fill it up with some content.  I'll put "This is my hidden content!" into the editor and some JSON configuration into the configuration box (for interested parties, I am using the following config:
+
+@@js
+{name: "SALDAPMembershipProvider", useSSL: "true", directoryServer: "directory.ucsb.edu", directoryPort: "636"}
+@@
+
+Now I click "Save" and then publish the page.  Done!  Congratulations on making your very first Sitefinity MVC Widget with Designer!
+
+Now that you've read this article, you might want to take a look at our other Sitefinity MVC widget article, [Case-Study-Building-the-DepartmentsAndPrograms-Sitefinity-MVC-Widget|Case Study: Building the DepartmentsAndPrograms Sitefinity MVC Widget], which demonstrates how to create a Sitefinity MVC widget that will provide two different data views; a list of graduate programs and a detail view for each program.
