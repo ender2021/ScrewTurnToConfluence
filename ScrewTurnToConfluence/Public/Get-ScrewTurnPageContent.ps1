@@ -20,7 +20,12 @@ function Get-ScrewTurnPageContent {
         # An array of page names to exclude from the results
         [Parameter(Position=3,ValueFromPipelineByPropertyName)]
         [string[]]
-        $Exclude
+        $Exclude,
+
+        # A character to replace colon (:) in page titles
+        [Parameter(Position=4,ValueFromPipelineByPropertyName)]
+        [string]
+        $ReplaceColon=":"
     )
     
     begin {
@@ -29,7 +34,7 @@ function Get-ScrewTurnPageContent {
     
     process {
         $pageTable = Read-SqlViewData -ServerInstance $ServerName -DatabaseName $DatabaseName -SchemaName $DatabaseSchema -ViewName "vw_PageContent_Current_And_First" 
-        $results += $pageTable | Where-Object { $Exclude -notcontains $_.Name }
+        $results += $pageTable | Where-Object { $Exclude -notcontains $_.Name } | ForEach-Object { $_.Title = $_.Title.Replace(":",$ReplaceColon); $_ }
     }
     
     end {
