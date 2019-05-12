@@ -95,7 +95,7 @@ function Format-Content {
                 replace = ('{panel}$1{panel}')
             },
             @{
-                find = '\<div style\=\"clear\:\s?both\;?\" \/\>'
+                find = '\<div style\=\"clear\:\s?both\;?\"\s*?\/?\>'
                 replace = ''
             },
             @{
