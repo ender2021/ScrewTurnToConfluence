@@ -11,15 +11,25 @@ function New-ConfluencePage {
         [string]
         $SpaceKey,
 
+        # A look-up reference of all pages in the wiki, for creating inter-wiki links
+        [Parameter(Mandatory,Position=2)]
+        [pscustomobject[]]
+        $AllPages,
+
         # A list containing labels for all pages supplied to the function
-        [Parameter(Position=2)]
+        [Parameter(Position=3)]
         [pscustomobject[]]
         $Labels,
 
         # A list of directories with page names, containing attachments for the page
-        [Parameter(Position=3)]
+        [Parameter(Position=4)]
         [object[]]
-        $Attachments
+        $Attachments,
+
+        # A global list of snippets to be replaced
+        [Parameter(Position=5)]
+        [pscustomobject[]]
+        $Snippets
     )
     begin {
         Write-Verbose "Beginning page creation"
@@ -32,7 +42,7 @@ function New-ConfluencePage {
         Write-Verbose "Beginning page: $title ($name)"
 
         Write-Verbose "Converting content format"
-        $formatResults = Format-Content $PageContentRow
+        $formatResults = Format-Content $PageContentRow $AllPages $Snippets
         $contentBody = New-ConfluenceContentBody $formatResults.FormattedContent
 
         Write-Verbose "Creating page"

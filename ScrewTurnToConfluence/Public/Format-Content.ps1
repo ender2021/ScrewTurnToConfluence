@@ -4,7 +4,17 @@ function Format-Content {
         # An object with properties corresponding to ScrewTurn PageContent table columns
         [Parameter(Mandatory,Position=0,ValueFromPipeline)]
         [pscustomobject]
-        $PageContentRow
+        $PageContentRow,
+
+         # A look-up reference of all pages in the wiki, for creating inter-wiki links
+         [Parameter(Mandatory,Position=1)]
+         [pscustomobject[]]
+         $AllPages,
+
+         # A global list of snippets to be replaced
+        [Parameter(Position=2)]
+        [pscustomobject[]]
+        $Snippets
     )
     begin {
         Write-Verbose "Beginning content formatting"
@@ -44,7 +54,11 @@ function Format-Content {
             },
             @{
                 find = '{br}'
-                replace = '<br />'
+                replace = "`r`n"
+            },
+            @{
+                find = '{(clear|top|CLEAR|TOP)}'
+                replace = ''
             },
             @{
                 find = '“'
@@ -128,6 +142,26 @@ function Format-Content {
         $toSend = $PageContentRow.Content
         $attachNames = @()
         if ($toSend -ne "") {
+
+            if ($null -ne $Snippets) {
+                Write-Verbose "Replacing snippets"
+                [regex]$snipPattern = "\{s\:(.*?)\}"
+                $snipPattern.Matches($toSend) | ForEach-Object {
+                    #what is going to be replaced
+                    $original = $_.Value
+                    
+                    #remember the name
+                    $snipName = $_.Groups[1].Value
+
+                    #look up the snip object
+                    $snipValue = ($Snippets | Where-Object { $_.Name -eq $snipName }).Content
+                    if ($null -ne $snipValue) {
+                        #swap out the snippet
+                        $toSend = $toSend.Replace($original, $snipValue)
+                    }
+                }
+            }
+
             Write-Verbose "Performing basic string replacements on content"
             $replacements | ForEach-Object { $toSend = $toSend -replace $_.find,$_.replace }
 
@@ -136,6 +170,48 @@ function Format-Content {
 
             Write-Verbose "Performing table formatting"
             $toSend = Format-ScrewTurnTables $toSend
+
+            Write-Verbose "Performing internal link reformatting"
+            [regex]$links = "\[(.*?\|)?(.*?)\]"
+            $links.Matches($toSend) | ForEach-Object {
+                #what is going to be replaced
+                $original = $_.Value
+
+                #remember the text and the target
+                $linkText = $_.Groups[1].Value
+                $linkTarget = $_.Groups[2].Value
+
+                #leave external links alone
+                if (!($linkTarget -match 'https?\:\/\/.*')) {
+                    #look up the title of the page linked to
+                    $newTarget = ($AllPages | Where-Object { $_.Name -eq $linkTarget }).Title
+                    if ($null -ne $newTarget) {
+                        #remove colons (a reserved character in Confluence wiki markup links)
+                        $newTarget = $newTarget.Replace(":", "")
+                        #swap out link formats
+                        $toSend = $toSend.Replace($original, "[$linkText$newTarget]")
+                    }
+                }
+            }
+
+            Write-Verbose "Performing reformatting of transclude macros"
+            [regex]$trans = "\{t\:(.*?)\}"
+            $trans.Matches($toSend) | ForEach-Object {
+                #what is going to be replaced
+                $original = $_.Value
+                
+                #remember the name
+                $foundName = $_.Groups[1].Value
+
+                #look up the title of the page linked to
+                $includeTitle = ($AllPages | Where-Object { $_.Name -eq $foundName }).Title
+                if ($null -ne $includeTitle) {
+                    #remove colons (a reserved character in Confluence wiki markup links)
+                    $includeTitle = $includeTitle.Replace(":", "")
+                    #swap out link formats
+                    $toSend = $toSend.Replace($original, "{include:$includeTitle}")
+                }
+            }
 
             Write-Verbose "Performing attachment name substitution and dependency collection"
             #eliminate page prefixes, noting them as dependencies
