@@ -32,11 +32,11 @@ function New-ConfluencePage {
         Write-Verbose "Beginning page: $title ($name)"
 
         Write-Verbose "Converting content format"
-        $content = (Format-PageMetaPanel $PageContentRow) + $PageContentRow.Content
-        $formatted = (New-ConfluenceContentBody (Format-Content $content $title))
+        $formatResults = Format-Content $PageContentRow
+        $contentBody = New-ConfluenceContentBody $formatResults.FormattedContent
 
         Write-Verbose "Creating page"
-        $page = Invoke-ConfluenceCreateContent -SpaceKey $SpaceKey -Title $title -ContentBody $formatted
+        $page = Invoke-ConfluenceCreateContent -SpaceKey $SpaceKey -Title $title -ContentBody $contentBody
 
         $relevantLabels = $Labels | Where-Object { $_.Page -eq $name }
         if ($relevantLabels.Count -gt 0) {
@@ -44,7 +44,7 @@ function New-ConfluencePage {
             $labelsResults = $relevantLabels | ForEach-Object { $_.Category -replace " ","-" } | Invoke-ConfluenceAddContentLabels -Id $page.id
         }
 
-        $relevantAttachments = $Attachments | Where-Object { $_.Name -eq "SAIS-Environments" } | Get-ChildItem
+        $relevantAttachments = $Attachments | Where-Object { $formatResults.Dependencies -contains $_.Name } | Get-ChildItem
         if ($relevantAttachments.Count -gt 0) {
             Write-Verbose "Uploading attachments"
             $attachResults = $relevantAttachments | ForEach-Object {
