@@ -14,7 +14,12 @@ function New-ConfluencePage {
         # A list containing labels for all pages supplied to the function
         [Parameter(Position=2)]
         [pscustomobject[]]
-        $Labels
+        $Labels,
+
+        # A list of directories with page names, containing attachments for the page
+        [Parameter(Position=3)]
+        [object[]]
+        $Attachments
     )
     begin {
         Write-Verbose "Beginning page creation"
@@ -27,7 +32,8 @@ function New-ConfluencePage {
         Write-Verbose "Beginning page: $title ($name)"
 
         Write-Verbose "Converting content format"
-        $formatted = (New-ConfluenceContentBody (Format-Content $PageContentRow.Content $title))
+        $content = (Format-PageMetaPanel $PageContentRow) + $PageContentRow.Content
+        $formatted = (New-ConfluenceContentBody (Format-Content $content $title))
 
         Write-Verbose "Creating page"
         $page = Invoke-ConfluenceCreateContent -SpaceKey $SpaceKey -Title $title -ContentBody $formatted
@@ -35,7 +41,22 @@ function New-ConfluencePage {
         $relevantLabels = $Labels | Where-Object { $_.Page -eq $name }
         if ($relevantLabels.Count -gt 0) {
             Write-Verbose "Applying page labels"
-            $pageLabels = $relevantLabels | ForEach-Object { $_.Category -replace " ","-" } | Invoke-ConfluenceAddContentLabels -Id $page.id
+            $labelsResults = $relevantLabels | ForEach-Object { $_.Category -replace " ","-" } | Invoke-ConfluenceAddContentLabels -Id $page.id
+        }
+
+        $relevantAttachments = $Attachments | Where-Object { $_.Name -eq "SAIS-Environments" } | Get-ChildItem
+        if ($relevantAttachments.Count -gt 0) {
+            Write-Verbose "Uploading attachments"
+            $attachResults = $relevantAttachments | ForEach-Object {
+                Write-Verbose ("Uploading " + $_.Name)
+                Invoke-ConfluenceCreateOrUpdateAttachment -ContentId $page.id -Attachment $_
+            } 
+        }
+
+        $results += [pscustomobject]@{
+            Page = $page
+            Labels = $labelsResults
+            Attachments = $attachResults
         }
 
         Write-Verbose "Completed page: $title ($name)"

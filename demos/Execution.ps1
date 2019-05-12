@@ -19,14 +19,14 @@ Reset-ConfluenceSpace $spaceKey $spaceName -Verbose
 #get category (aka label) mapping info from ScrewTurn
 $labels = Get-ScrewTurnCategoryBinding $Config.dbconnection $Config.dbName
 
-#Read from a text file and attempt to convert (use for testing a single piece of content)
-#(Get-Content $PSScriptRoot\body.txt -Delimiter [char]0x0400) | Format-Content -Title "blank" | Out-File "converted.txt"
+#get attachments directory list
+$attachments = Get-ChildItem $Config.attachments
 
 #create a single page as a test
-Get-ScrewTurnPageContent $Config.dbconnection $Config.dbName | Where-Object { $_.Name -eq "eGrades-Sync-Service" } | New-ConfluencePage -SpaceKey $spaceKey -Labels $labels -Verbose
+$testPage = Get-ScrewTurnPageContent $Config.dbconnection $Config.dbName | Where-Object { $_.Name -eq "SAIS-Environments" } | New-ConfluencePage -SpaceKey $spaceKey -Labels $labels -Attachments $attachments -Verbose
 
 #fill space with content
-#$pages = Get-ScrewTurnPageContent $Config.dbconnection $Config.dbName -Exclude @("WikiMarkup-Reference") | New-ConfluencePage -SpaceKey $spaceKey -Labels $labels -Verbose
+#$pages = Get-ScrewTurnPageContent $Config.dbconnection $Config.dbName -Exclude @("WikiMarkup-Reference") | New-ConfluencePage -SpaceKey $spaceKey -Labels $labels -Attachments $attachments -Verbose
 
 #close the session
 Close-ConfluenceSession
