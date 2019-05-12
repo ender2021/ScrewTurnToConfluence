@@ -93,29 +93,25 @@ function Format-Content {
                 replace = ('{panel}$1{panel}')
             },
             @{
-                find = '======(.*?)======'
-                replace = 'h6. $1'
+                find = '\<div style\=\"clear\: both\;?\" \/\>'
+                replace = ''
             },
             @{
                 find = '=====(.*?)====='
-                replace = 'h5. $1'
-            },
-            @{
-                find = '====(.*?)===='
                 replace = 'h4. $1'
             },
             @{
-                find = '===(.*?)==='
+                find = '====(.*?)===='
                 replace = 'h3. $1'
             },
             @{
-                find = '==(.*?)=='
+                find = '===(.*?)==='
                 replace = 'h2. $1'
+            },
+            @{
+                find = '==(.*?)=='
+                replace = 'h1. $1'
             }
-            # @{
-            #     find = '=(.*?)='
-            #     replace = 'h1. $1'
-            # }
         )
     }
     process {
