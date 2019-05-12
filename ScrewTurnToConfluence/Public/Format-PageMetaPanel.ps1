@@ -17,7 +17,7 @@ function Format-PageMetaPanel {
 
         $message = @("This page was originally created by *$createBy* on *$createDate*",
                      "Prior to migration, it was last updated by *$updateBy* on *$updateDate*") -join "`r`n"
-        $results += "{note:title=Page Migrated From ScrewTurn!}$message{note}"
+        $results += "{note:title=Page Migrated From ScrewTurn!}$message{note}`r`n"
     }
     end {
         $results
