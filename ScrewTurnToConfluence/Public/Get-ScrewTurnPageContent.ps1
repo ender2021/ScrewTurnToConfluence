@@ -28,8 +28,8 @@ function Get-ScrewTurnPageContent {
     }
     
     process {
-        $pageTable = Read-SqlTableData -ServerInstance $ServerName -DatabaseName $DatabaseName -SchemaName "dbo" -TableName "PageContent" 
-        $results += $pageTable | Where-Object { ($_.Revision -eq -1) -and ($Exclude -notcontains $_.Name) }
+        $pageTable = Read-SqlViewData -ServerInstance $ServerName -DatabaseName $DatabaseName -SchemaName $DatabaseSchema -ViewName "vw_PageContent_Current_And_First" 
+        $results += $pageTable | Where-Object { $Exclude -notcontains $_.Name }
     }
     
     end {
