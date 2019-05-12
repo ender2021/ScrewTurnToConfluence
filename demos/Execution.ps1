@@ -22,11 +22,24 @@ $labels = Get-ScrewTurnCategoryBinding $Config.dbconnection $Config.dbName
 #get attachments directory list
 $attachments = Get-ChildItem $Config.attachments
 
-#create a single page as a test
-$testPage = Get-ScrewTurnPageContent $Config.dbconnection $Config.dbName | Where-Object { $_.Name -eq "SAIS-Environments" } | New-ConfluencePage -SpaceKey $spaceKey -Labels $labels -Attachments $attachments -Verbose
+#get a list of all pages
+$allPages = Get-ScrewTurnPageContent $Config.dbconnection $Config.dbName -Exclude @("WikiMarkup-Reference")
+
+#create a splattable object to pass conversion parameters
+$convertParams = @{
+    SpaceKey = $spaceKey
+    Labels = $labels
+    Attachments = $attachments
+    Verbose = $true
+}
+
+#create specific page as a test
+$testPage = $allPages | Where-Object {
+    @("Admissions-Architecture") -contains $_.Name
+} | New-ConfluencePage @convertParams
 
 #fill space with content
-#$pages = Get-ScrewTurnPageContent $Config.dbconnection $Config.dbName -Exclude @("WikiMarkup-Reference") | New-ConfluencePage -SpaceKey $spaceKey -Labels $labels -Attachments $attachments -Verbose
+#$pages = $allPages | New-ConfluencePage @convertParams
 
 #close the session
 Close-ConfluenceSession
