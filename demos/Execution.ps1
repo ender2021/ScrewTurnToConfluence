@@ -1,8 +1,8 @@
 $totalTimer = [system.diagnostics.stopwatch]::StartNew()
 
 Import-Module $PSScriptRoot\..\ScrewTurnToConfluence\ScrewTurnToConfluence.psm1 -Force
-Import-Module SqlServer -Force
-(Get-InstalledModule PowerConfluence).InstalledLocation + "\PowerConfluence.psm1" | Import-Module -Force
+Import-Module SqlServer
+Import-Module PowerConfluence
 . $PSScriptRoot\Credentials\Credentials.ps1
 . $PSScriptRoot\configs\Config.ps1
 
